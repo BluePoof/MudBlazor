@@ -70,6 +70,20 @@ namespace MudBlazor
         public bool ReadOnly { get; set; } = false;
 
         /// <summary>
+        /// Equality comparer to compare selected chips and avoid selection issues on first render and re-renders when
+        /// the same component is reused
+        /// </summary>
+        [Parameter, EditorRequired]
+        [Category(CategoryTypes.ChipSet.Behavior)]
+        public IEqualityComparer<object> MudChipEqualityComparer { get; set; }
+
+
+        /// <summary>
+        /// Save previous selection to avoid issues on first render
+        /// </summary>
+        private MudChip _previousSelection;
+
+        /// <summary>
         /// The currently selected chip in Choice mode
         /// </summary>
         [Parameter]
@@ -88,9 +102,12 @@ namespace MudBlazor
                 }
                 else
                 {
+                    // Save selection here
+                    _previousSelection = value;
+                    // Use custom comparer to avoid problems when comparing chips directly
                     foreach (var chip in _chips)
                     {
-                        chip.IsSelected = (chip == value);
+                        chip.IsSelected = MudChipEqualityComparer.Equals(chip, value);
                     }
                 }
                 this.InvokeAsync(StateHasChanged);
@@ -313,7 +330,10 @@ namespace MudBlazor
         protected override async void OnAfterRender(bool firstRender)
         {
             if (firstRender)
+            {
+                SelectedChip = _previousSelection;
                 await SelectDefaultChips();
+            }
             base.OnAfterRender(firstRender);
         }
 
