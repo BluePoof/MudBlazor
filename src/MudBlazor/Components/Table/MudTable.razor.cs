@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Diagnostics.CodeAnalysis;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
@@ -13,7 +14,7 @@ namespace MudBlazor
 {
     // note: the MudTable code is split. Everything depending on the type parameter T of MudTable<T> is here in MudTable<T>
 
-    public partial class MudTable<T> : MudTableBase
+    public partial class MudTable<[DynamicallyAccessedMembers(DynamicallyAccessedMemberTypes.PublicParameterlessConstructor)] T> : MudTableBase
     {
         /// <summary>
         /// Defines how a table row looks like. Use MudTd to define the table cells and their content.
@@ -170,7 +171,7 @@ namespace MudBlazor
         public Func<T, bool> Filter { get; set; } = null;
 
         /// <summary>
-        /// Button click event.
+        /// Row click event.
         /// </summary>
         [Parameter] public EventCallback<TableRowClickEventArgs<T>> OnRowClick { get; set; }
 
@@ -432,6 +433,16 @@ namespace MudBlazor
                 _editingItem = item;
         }
 
+        public override bool ContainsItem(object item)
+        {
+            var t = item.As<T>();
+            if (t is null)
+                return false;
+            return FilteredItems?.Contains(t) ?? false;
+        }
+
+        public override void UpdateSelection() => SelectedItemsChanged.InvokeAsync(SelectedItems);
+
         public override TableContext TableContext
         {
             get
@@ -445,25 +456,26 @@ namespace MudBlazor
         // TableContext provides shared functionality between all table sub-components
         public TableContext<T> Context { get; } = new TableContext<T>();
 
-        private void OnRowCheckboxChanged(bool value, T item)
+        private void OnRowCheckboxChanged(bool checkedState, T item)
         {
-            if (value)
+            if (checkedState)
                 Context.Selection.Add(item);
             else
                 Context.Selection.Remove(item);
             SelectedItemsChanged.InvokeAsync(SelectedItems);
         }
 
-        internal override void OnHeaderCheckboxClicked(bool value)
+        internal override void OnHeaderCheckboxClicked(bool checkedState)
         {
-            if (!value)
-                Context.Selection.Clear();
-            else
+            if (checkedState)
             {
                 foreach (var item in FilteredItems)
                     Context.Selection.Add(item);
             }
-            Context.UpdateRowCheckBoxes(false);
+            else
+                Context.Selection.Clear();
+            
+            Context.UpdateRowCheckBoxes(notify: false);
             SelectedItemsChanged.InvokeAsync(SelectedItems);
         }
 
@@ -551,9 +563,9 @@ namespace MudBlazor
             return sourceList.GroupBy(parent.Selector).ToList();
         }
 
-        internal void OnGroupHeaderCheckboxClicked(bool value, IEnumerable<T> items)
+        internal void OnGroupHeaderCheckboxClicked(bool checkedState, IEnumerable<T> items)
         {
-            if (value)
+            if (checkedState)
             {
                 foreach (var item in items)
                     Context.Selection.Add(item);
@@ -564,7 +576,7 @@ namespace MudBlazor
                     Context.Selection.Remove(item);
             }
 
-            Context.UpdateRowCheckBoxes(false);
+            Context.UpdateRowCheckBoxes(notify: false);
             SelectedItemsChanged.InvokeAsync(SelectedItems);
         }
     }
