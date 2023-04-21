@@ -1,7 +1,12 @@
-﻿
+﻿using System;
+using System.Linq;
 using System.Threading.Tasks;
+using AngleSharp.Dom;
+using AngleSharp.Html.Dom;
 using Bunit;
 using FluentAssertions;
+using MudBlazor.Docs.Examples;
+using MudBlazor.UnitTests.TestComponents;
 using NUnit.Framework;
 using static Bunit.ComponentParameterFactory;
 
@@ -190,8 +195,67 @@ namespace MudBlazor.UnitTests.Components
             await comp.InvokeAsync(() => comp.Instance.SetToggledAsync(true));
             comp.WaitForAssertion(() => comp.Instance.Toggled.Should().BeFalse());
         }
+
+        [Test]
+        public void MudButtonSizesTest()
+        {
+            var comp = Context.RenderComponent<ButtonSizeIconSizeTest>();
+
+            var buttons = comp.Nodes.Where(n => n.NodeName.Equals("BUTTON")).ToArray();
+            buttons.Length.Should().Be(6);
+
+            // Buttons 1-3: Explicit button sizes
+            ((IHtmlButtonElement)buttons[0]).ClassList.Contains("mud-button-filled-size-small").Should().BeTrue();  // Size="Size.Small"
+            ((IHtmlButtonElement)buttons[1]).ClassList.Contains("mud-button-filled-size-medium").Should().BeTrue(); // Size="Size.Medium"
+            ((IHtmlButtonElement)buttons[2]).ClassList.Contains("mud-button-filled-size-large").Should().BeTrue();  // Size="Size.Large"
+        }
+
+        [Test]
+        public void MudButtonIconSizesTest()
+        {
+            var comp = Context.RenderComponent<ButtonSizeIconSizeTest>();
+
+            var buttons = comp.Nodes.Where(n => n.NodeName.Equals("BUTTON")).ToArray();
+
+            // Button 4: Small button- with large icon size: Size="Size.Small", IconSize="Size.Large"
+            ((IHtmlButtonElement)buttons[3]).ClassList.Contains("mud-button-filled-size-small").Should().BeTrue();
+            var button4Span = ((IHtmlButtonElement)buttons[3]).Children[0].Children[0];
+            button4Span.ClassName.Contains("mud-button-icon-size-large").Should().BeTrue();
+            var button4Svg = button4Span.Children[0];
+            button4Svg.ClassName.Contains("mud-icon-size-large").Should().BeTrue();
+
+            // Button 5: Defaults: Medium button- and icon size.
+            ((IHtmlButtonElement)buttons[4]).ClassList.Contains("mud-button-filled-size-medium").Should().BeTrue();
+            var button5Span = ((IHtmlButtonElement)buttons[4]).Children[0].Children[0];
+            button5Span.ClassName.Contains("mud-button-icon-size-medium").Should().BeTrue();
+            var button5Svg = button5Span.Children[0];
+            button5Svg.ClassName.Contains("mud-icon-size-medium").Should().BeTrue();
+
+            // Button 6: Large button- with small icon size: Size="Size.Large", IconSize="Size.Small"
+            ((IHtmlButtonElement)buttons[5]).ClassList.Contains("mud-button-filled-size-large").Should().BeTrue();
+            var button6Span = ((IHtmlButtonElement)buttons[5]).Children[0].Children[0];
+            button6Span.ClassName.Contains("mud-button-icon-size-small").Should().BeTrue();
+            var button6Svg = button6Span.Children[0];
+            button6Svg.ClassName.Contains("mud-icon-size-small").Should().BeTrue();
+        }
+
+        /// <summary>
+        /// Ensures buttons inherit their disabled state
+        /// </summary>
+        [Test]
+        public void ButtonsNestedDisabledTest()
+        {
+            var comp = Context.RenderComponent<ButtonsNestedDisabledTest>();
+
+            comp.FindComponent<MudButton>().Find("button").HasAttribute("disabled").Should().BeFalse();
+            comp.FindComponent<MudFab>().Find("button").HasAttribute("disabled").Should().BeFalse();
+            comp.FindComponent<MudIconButton>().Find("button").HasAttribute("disabled").Should().BeFalse();
+
+            comp.SetParametersAndRender(parameters => parameters.Add(x => x.Disabled, true)); //buttons should be disabled when the cascading value is disabled
+
+            comp.FindComponent<MudButton>().Find("button").HasAttribute("disabled").Should().BeTrue();
+            comp.FindComponent<MudFab>().Find("button").HasAttribute("disabled").Should().BeTrue();
+            comp.FindComponent<MudIconButton>().Find("button").HasAttribute("disabled").Should().BeTrue();
+        }
     }
 }
-
-
-
