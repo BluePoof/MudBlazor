@@ -27,7 +27,7 @@
     <GenerateDocumentationFile>true</GenerateDocumentationFile>
     <PackageRequireLicenseAcceptance>true</PackageRequireLicenseAcceptance>
     <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
-    <Version>6.1.7-dev</Version>
+    <Version>6.2.2-dev</Version>
   </PropertyGroup>
 
   <ItemGroup>
