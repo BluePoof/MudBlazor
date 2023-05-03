@@ -10,11 +10,10 @@ namespace MudBlazor
 {
     public partial class MudChipSet : MudComponentBase, IDisposable
     {
-
         protected string Classname =>
-        new CssBuilder("mud-chipset")
-          .AddClass(Class)
-        .Build();
+            new CssBuilder("mud-chipset")
+                .AddClass(Class)
+                .Build();
 
         /// <summary>
         /// Child content of component.
@@ -91,7 +90,7 @@ namespace MudBlazor
         [Category(CategoryTypes.ChipSet.Behavior)]
         public MudChip SelectedChip
         {
-            get { return _chips.OfType<MudChip>().FirstOrDefault(x => x.IsSelected); }
+            get { return _chips.FirstOrDefault(x => x.IsSelected); }
             set
             {
                 if (value == null)
@@ -128,7 +127,7 @@ namespace MudBlazor
         [Category(CategoryTypes.ChipSet.Behavior)]
         public MudChip[] SelectedChips
         {
-            get { return _chips.OfType<MudChip>().Where(x => x.IsSelected).ToArray(); }
+            get { return _chips.Where(x => x.IsSelected).ToArray(); }
             set
             {
                 if (value == null || value.Length == 0)
@@ -197,22 +196,23 @@ namespace MudBlazor
             set
             {
                 if (value == null)
-                    SetSelectedValues(new object[0]);
+                    SetSelectedValuesAsync(Array.Empty<object>());
                 else
-                    SetSelectedValues(value.ToArray()).AndForget();
+                    SetSelectedValuesAsync(value.ToArray()).AndForget();
             }
         }
 
         /// <summary>
         /// Called whenever the selection changed
         /// </summary>
-        [Parameter] public EventCallback<ICollection<object>> SelectedValuesChanged { get; set; }
+        [Parameter]
+        public EventCallback<ICollection<object>> SelectedValuesChanged { get; set; }
 
-        internal Task SetSelectedValues(object[] values)
+        internal Task SetSelectedValuesAsync(object[] values)
         {
             HashSet<object> newValues = null;
             if (values == null)
-                values = new object[0];
+                values = Array.Empty<object>();
             if (MultiSelection)
                 newValues = new HashSet<object>(values, _comparer);
             else
@@ -230,7 +230,7 @@ namespace MudBlazor
                 var isSelected = _selectedValues.Contains(chip.Value);
                 chip.IsSelected = isSelected;
             }
-            return NotifySelection();
+            return NotifySelectionAsync();
         }
 
         /// <summary>
@@ -239,25 +239,26 @@ namespace MudBlazor
         [Parameter]
         public EventCallback<MudChip> OnClose { get; set; }
 
-        internal Task Add(MudChip chip)
+        internal Task AddAsync(MudChip chip)
         {
             _chips.Add(chip);
             if (_selectedValues.Contains(chip.Value))
                 chip.IsSelected = true;
-            return CheckDefault(chip);
+            return CheckDefaultAsync(chip);
         }
 
-        internal void Remove(MudChip chip)
+        internal Task RemoveAsync(MudChip chip)
         {
             _chips.Remove(chip);
             if (chip.IsSelected)
             {
                 _selectedValues.Remove(chip.Value);
-                NotifySelection().AndForget();
+                return NotifySelectionAsync();
             }
+            return Task.CompletedTask;
         }
 
-        private async Task CheckDefault(MudChip chip)
+        private async Task CheckDefaultAsync(MudChip chip)
         {
             if (!MultiSelection)
                 return;
@@ -274,14 +275,14 @@ namespace MudBlazor
                     _selectedValues.Add(chip.Value);
                 else
                     _selectedValues.Remove(chip.Value);
-                await NotifySelection();
+                await NotifySelectionAsync();
             }
         }
 
         private HashSet<MudChip> _chips = new();
         private bool _filter;
 
-        internal Task OnChipClicked(MudChip chip)
+        internal Task OnChipClickedAsync(MudChip chip)
         {
             var wasSelected = chip.IsSelected;
             if (MultiSelection)
@@ -298,7 +299,7 @@ namespace MudBlazor
                     chip.IsSelected = !wasSelected;
             }
             UpdateSelectedValues();
-            return NotifySelection();
+            return NotifySelectionAsync();
         }
 
         private void UpdateSelectedValues()
@@ -308,7 +309,7 @@ namespace MudBlazor
 
         private object[] _lastSelectedValues = null;
 
-        private async Task NotifySelection()
+        private async Task NotifySelectionAsync()
         {
             if (_disposed)
                 return;
@@ -322,23 +323,30 @@ namespace MudBlazor
             StateHasChanged();
         }
 
+        [Obsolete($"Use {nameof(OnChipDeletedAsync)} instead. This will be removed in v7.")]
         public void OnChipDeleted(MudChip chip)
         {
-            Remove(chip);
+            RemoveAsync(chip).AndForget();
             OnClose.InvokeAsync(chip);
         }
 
-        protected override async void OnAfterRender(bool firstRender)
+        public async Task OnChipDeletedAsync(MudChip chip)
+        {
+            await RemoveAsync(chip);
+            await OnClose.InvokeAsync(chip);
+        }
+
+        protected override async Task OnAfterRenderAsync(bool firstRender)
         {
             if (firstRender)
             {
                 SelectedChip = _previousSelection;
-                await SelectDefaultChips();
+                await SelectDefaultChipsAsync();
             }
-            base.OnAfterRender(firstRender);
+            await base.OnAfterRenderAsync(firstRender);
         }
 
-        private async Task SelectDefaultChips()
+        private async Task SelectDefaultChipsAsync()
         {
             if (!MultiSelection)
             {
@@ -352,7 +360,7 @@ namespace MudBlazor
                 if (anySelected)
                 {
                     UpdateSelectedValues();
-                    await NotifySelection();
+                    await NotifySelectionAsync();
                 }
             }
         }
